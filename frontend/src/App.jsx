@@ -6,7 +6,7 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, ''
 const initialSignup = {
   email: '',
   password: '',
-  name: '',
+  nickname: '',
 }
 
 const initialLogin = {
@@ -165,13 +165,13 @@ function App() {
             />
           </label>
           <label>
-            Name
+            Nickname
             <input
               type="text"
               required
-              value={signupForm.name}
+              value={signupForm.nickname}
               onChange={(event) =>
-                setSignupForm((prev) => ({ ...prev, name: event.target.value }))
+                setSignupForm((prev) => ({ ...prev, nickname: event.target.value }))
               }
             />
           </label>
