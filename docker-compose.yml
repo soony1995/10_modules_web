@@ -1,0 +1,19 @@
+services:
+  web-static:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: auth-web-static
+    ports:
+    # 테스트 용도로 3000번 포트를 개방함. 
+      - "3000:4173"
+    restart: always
+
+  web-gateway:
+    image: nginx:1.27-alpine
+    container_name: auth-web-gateway
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/app.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: always
