@@ -17,3 +17,11 @@ services:
     volumes:
       - ./nginx/app.conf:/etc/nginx/conf.d/default.conf:ro
     restart: always
+    networks:
+      - default
+      - auth-shared
+
+networks:
+  auth-shared:
+    external: true
+    name: auth-shared

@@ -28,6 +28,9 @@ React 개발 서버에서 API 호출을 테스트하려면 `.env.local`에 `VITE
 
 ```bash
 # 루트 (docker-compose.yml 이 위치한 상위 디렉터리)에서
+# 최초 1회 공유 네트워크 생성 (이미 있으면 생략)
+docker network create auth-shared
+
 docker compose build web-static
 docker compose up web-gateway web-static
 ```
@@ -37,7 +40,7 @@ docker compose up web-gateway web-static
 - **web-static** – `auth-web-static` 컨테이너. 4173 포트에서 React 정적 파일을 제공합니다.
 - **web-gateway** – `auth-web-gateway` 컨테이너. `./0.Web/nginx/app.conf`를 그대로 로드하고, `/` 요청은 정적 서비스로, `/api/*` 요청은 인증 서버로 프록시합니다.
 
-`nginx/app.conf`를 수정한 뒤 `docker compose restart web-gateway`만 실행하면 새 라우팅 규칙이 즉시 반영됩니다.
+`web-gateway`는 `auth-shared` 네트워크를 통해 `1.Authentication`의 `auth-service` 컨테이너와 통신한다. 따라서 백엔드 스택을 실행하기 전에 해당 네트워크와 `auth-service`가 준비되어 있어야 한다. `nginx/app.conf`를 수정한 뒤 `docker compose restart web-gateway`만 실행하면 새 라우팅 규칙이 즉시 반영됩니다.
 
 ## 커밋 메시지 템플릿
 
