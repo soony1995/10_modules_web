@@ -95,6 +95,7 @@ function App() {
       options: {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(loginForm),
       },
     })
@@ -128,7 +129,9 @@ function App() {
     setMediaLoading(true)
     setMediaError('')
     try {
-      const response = await fetch(buildMediaUrl('/media'))
+      const response = await fetch(buildMediaUrl('/media'), {
+        credentials: 'include',
+      })
       const body = await parseResponse(response)
       appendLog('Media List', { status: response.status, ok: response.ok, body })
 
@@ -164,6 +167,7 @@ function App() {
       const response = await fetch(buildMediaUrl('/media/upload'), {
         method: 'POST',
         body: formData,
+        credentials: 'include',
       })
       const body = await parseResponse(response)
       appendLog('Media Upload', { status: response.status, ok: response.ok, body })
