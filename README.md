@@ -4,7 +4,7 @@ React 기반의 최소 UI와 Nginx 게이트웨이를 분리된 컨테이너로 
 
 ## 구조
 
-- `frontend/` – Vite + React UI. `/api/v1/auth/*` 엔드포인트에 대한 폼과 `/auth/validate` 테스트 패널을 제공한다.
+- `frontend/` – Vite + React UI. `/api/v1/auth/*` 엔드포인트 테스트 폼과 토큰 검증 패널, 그리고 미디어 업로드 UI를 제공한다.
 - `nginx/` – `auth_request` 기반 프록시 설정 (`app.conf`). 수정 후 컨테이너 재시작만으로 반영된다.
 - `Dockerfile` – React 정적 파일만 빌드하고 `serve`로 노출하는 컨테이너 정의(포트 `4173`).
 
@@ -13,6 +13,12 @@ React 기반의 최소 UI와 Nginx 게이트웨이를 분리된 컨테이너로 
 - `AUTH_SERVER_ORIGIN` (기본값: `http://auth-service:8080`)
   - Nginx가 프록시할 실제 인증 서버의 베이스 URL.
   - Docker Compose 실행 시 `environment` 항목으로 손쉽게 교체할 수 있다.
+- `VITE_API_BASE_URL`
+  - React 앱에서 인증 API를 호출할 기준 주소. 기본값은 빈 값(`same-origin`).
+- `VITE_MEDIA_API_BASE_URL`
+  - 미디어 업로드 UI가 호출할 API prefix. 별도의 백엔드 서비스 URL을 지정해야 한다(예: `http://localhost:9000/media-api`).
+- `VITE_MEDIA_PROXY_TARGET` (개발 서버 전용)
+  - `npm run dev`에서 `/media-api`와 `/media-files` 요청을 전달할 대상. 로컬에서 직접 띄운 미디어 백엔드의 주소를 넣어준다.
 
 ## 로컬 개발
 
@@ -22,7 +28,14 @@ npm install
 npm run dev
 ```
 
-React 개발 서버에서 API 호출을 테스트하려면 `.env.local`에 `VITE_API_BASE_URL=http://localhost:8080` (gateway 주소) 처럼 설정한다.
+React 개발 서버에서 API 호출을 테스트하려면 `.env.local`에 아래와 같이 설정한다.
+
+```
+VITE_API_BASE_URL=http://localhost:8080        # 인증 서버 게이트웨이
+VITE_MEDIA_API_BASE_URL=http://localhost:9000  # 별도로 띄운 미디어 백엔드
+```
+
+필요하다면 `VITE_MEDIA_PROXY_TARGET`을 설정하여 `/media-api`·`/media-files` 요청을 로컬 백엔드로 전달하도록 할 수 있다.
 
 ## 컨테이너 빌드 & 실행
 
@@ -38,9 +51,16 @@ docker compose up web-gateway web-static
 구성 요소:
 
 - **web-static** – `auth-web-static` 컨테이너. 4173 포트에서 React 정적 파일을 제공합니다.
-- **web-gateway** – `auth-web-gateway` 컨테이너. `./0.Web/nginx/app.conf`를 그대로 로드하고, `/` 요청은 정적 서비스로, `/api/*` 요청은 인증 서버로 프록시합니다.
+- **web-gateway** – `auth-web-gateway` 컨테이너. `./0.Web/nginx/app.conf`를 그대로 로드하고, `/` 요청은 정적 서비스로, `/api/*` 요청은 인증 서버로 프록시합니다. 필요하면 이 게이트웨이에 별도의 미디어 백엔드 라우팅을 추가한다.
 
 `web-gateway`는 `auth-shared` 네트워크를 통해 `1.Authentication`의 `auth-service` 컨테이너와 통신한다. 따라서 백엔드 스택을 실행하기 전에 해당 네트워크와 `auth-service`가 준비되어 있어야 한다. `nginx/app.conf`를 수정한 뒤 `docker compose restart web-gateway`만 실행하면 새 라우팅 규칙이 즉시 반영됩니다.
+
+## 미디어 처리 모듈 (Media)
+
+- **프런트엔드 UI**
+  - React UI에 "Media Uploads" 섹션이 포함되어 파일 선택 → 업로드 → 미리보기 → 새로고침까지 한 패널에서 확인할 수 있다.
+- **백엔드 연동**
+  - 별도의 미디어 백엔드 서비스가 `VITE_MEDIA_API_BASE_URL`로 지정된 엔드포인트(`/media`, `/media/upload`, `/media-files/*` 등)를 제공해야 한다.
 
 ## 커밋 메시지 템플릿
 

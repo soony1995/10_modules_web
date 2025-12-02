@@ -109,6 +109,11 @@ button:hover {
   background: #1d4ed8;
 }
 
+button:disabled {
+  cursor: not-allowed;
+  background: #94a3b8;
+}
+
 .hint {
   margin: 0;
   color: #64748b;
@@ -144,4 +149,89 @@ pre {
   margin: 0;
   font-size: 0.85rem;
   overflow: auto;
+}
+
+.media-panel {
+  gap: 1.5rem;
+}
+
+.media-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.media-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.media-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-end;
+}
+
+.media-form input[type='file'] {
+  border: 1px dashed #cbd5f5;
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+  background: #f8fafc;
+}
+
+.media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  width: 100%;
+}
+
+.media-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+}
+
+.media-preview {
+  background: #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+}
+
+.media-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.media-meta {
+  margin: 0;
+  padding: 0.75rem 1rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.media-meta strong {
+  font-size: 0.95rem;
+}
+
+.media-meta a {
+  margin-top: 0.25rem;
+  color: #2563eb;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.media-error {
+  margin: 0;
+  color: #b91c1c;
+  font-size: 0.9rem;
 }

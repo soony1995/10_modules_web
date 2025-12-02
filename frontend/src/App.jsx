@@ -1,7 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
+const MEDIA_API_BASE_URL = (import.meta.env.VITE_MEDIA_API_BASE_URL || '').replace(
+  /\/$/,
+  '',
+)
 
 const initialSignup = {
   email: '',
@@ -15,6 +19,7 @@ const initialLogin = {
 }
 
 const buildUrl = (path) => `${API_BASE_URL}${path}`
+const buildMediaUrl = (path) => `${MEDIA_API_BASE_URL}${path}`
 
 const parseResponse = async (response) => {
   const rawText = await response.text()
@@ -36,6 +41,12 @@ function App() {
   const [logs, setLogs] = useState([])
   const [accessToken, setAccessToken] = useState('')
   const [tokenInput, setTokenInput] = useState('')
+  const [mediaItems, setMediaItems] = useState([])
+  const [mediaLoading, setMediaLoading] = useState(false)
+  const [mediaError, setMediaError] = useState('')
+  const [selectedFile, setSelectedFile] = useState(null)
+  const [uploading, setUploading] = useState(false)
+  const [fileInputKey, setFileInputKey] = useState(Date.now())
 
   const appendLog = (title, payload) => {
     setLogs((prev) => [
@@ -112,6 +123,70 @@ function App() {
       },
     })
   }
+
+  const fetchMediaItems = async () => {
+    setMediaLoading(true)
+    setMediaError('')
+    try {
+      const response = await fetch(buildMediaUrl('/media'))
+      const body = await parseResponse(response)
+      appendLog('Media List', { status: response.status, ok: response.ok, body })
+
+      if (!response.ok) {
+        setMediaError(body?.message || 'Failed to load media files')
+        setMediaItems([])
+        return
+      }
+
+      setMediaItems(Array.isArray(body?.items) ? body.items : [])
+    } catch (error) {
+      appendLog('Media List', { error: error.message })
+      setMediaError(error.message)
+      setMediaItems([])
+    } finally {
+      setMediaLoading(false)
+    }
+  }
+
+  const handleMediaUpload = async (event) => {
+    event.preventDefault()
+    if (!selectedFile) {
+      setMediaError('Please choose an image before uploading.')
+      return
+    }
+
+    setUploading(true)
+    setMediaError('')
+    try {
+      const formData = new FormData()
+      formData.append('file', selectedFile)
+
+      const response = await fetch(buildMediaUrl('/media/upload'), {
+        method: 'POST',
+        body: formData,
+      })
+      const body = await parseResponse(response)
+      appendLog('Media Upload', { status: response.status, ok: response.ok, body })
+
+      if (!response.ok) {
+        setMediaError(body?.message || 'Upload failed')
+        return
+      }
+
+      setSelectedFile(null)
+      setFileInputKey(Date.now())
+      await fetchMediaItems()
+    } catch (error) {
+      appendLog('Media Upload', { error: error.message })
+      setMediaError(error.message)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchMediaItems()
+  }, [])
 
   return (
     <main className="app">
@@ -207,6 +282,61 @@ function App() {
             <p className="hint">Access token captured and ready for validation.</p>
           )}
         </form>
+      </section>
+
+      <section className="panel media-panel">
+        <div className="media-header">
+          <div>
+            <h2>Media Uploads</h2>
+            <p className="hint">
+              Files are stored by whichever media backend is configured via{' '}
+              <code>VITE_MEDIA_API_BASE_URL</code>.
+            </p>
+          </div>
+          <div className="media-actions">
+            <button type="button" onClick={fetchMediaItems} disabled={mediaLoading}>
+              Refresh
+            </button>
+          </div>
+        </div>
+        <form className="media-form" onSubmit={handleMediaUpload}>
+          <label>
+            Select image
+            <input
+              key={fileInputKey}
+              type="file"
+              accept="image/*"
+              onChange={(event) => {
+                setSelectedFile(event.target.files?.[0] || null)
+              }}
+            />
+          </label>
+          <button type="submit" disabled={!selectedFile || uploading}>
+            {uploading ? 'Uploading...' : 'Upload'}
+          </button>
+        </form>
+        {mediaError && <p className="media-error">{mediaError}</p>}
+        <div className="media-grid">
+          {mediaLoading && <p>Loading media...</p>}
+          {!mediaLoading && mediaItems.length === 0 && <p>No uploads yet.</p>}
+          {!mediaLoading &&
+            mediaItems.map((item) => (
+              <figure key={item.filename} className="media-card">
+                <div className="media-preview">
+                  <img src={item.url} alt={item.originalName || item.filename} />
+                </div>
+                <figcaption className="media-meta">
+                  <div>
+                    <strong>{item.originalName || item.filename}</strong>
+                    <p>{(item.size / 1024).toFixed(1)} KB · {new Date(item.uploadedAt).toLocaleString()}</p>
+                  </div>
+                  <a href={item.url} target="_blank" rel="noreferrer">
+                    Open
+                  </a>
+                </figcaption>
+              </figure>
+            ))}
+        </div>
       </section>
 
       <section className="logs">
