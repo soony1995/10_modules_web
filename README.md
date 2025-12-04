@@ -1,26 +1,49 @@
-# Auth Web Frontend
+# 0.Web - Auth Web Frontend & Gateway
 
-React 기반의 최소 UI와 Nginx 게이트웨이를 분리된 컨테이너로 제공한다. `web-static`은 정적 빌드만 담당하고, `web-gateway`는 여러 백엔드와의 라우팅/인증 위임을 담당한다.
+이 프로젝트는 [10_modules](https://github.com/soony1995/10_modules.git) 저장소의 `0.Web` 모듈입니다. React 기반의 최소 UI와 Nginx 게이트웨이를 분리된 컨테이너로 제공합니다.
 
-## 구조
+- **web-static**: React 애플리케이션의 정적 파일 빌드 및 제공 (`serve`).
+- **web-gateway**: 백엔드 서비스(`auth-service`, `media-service` 등)로의 라우팅 및 인증 위임 (`auth_request`)을 담당하는 Nginx 리버스 프록시.
 
-- `frontend/` – Vite + React UI. `/api/v1/auth/*` 엔드포인트 테스트 폼과 토큰 검증 패널, 그리고 미디어 업로드 UI를 제공한다.
-- `nginx/` – `auth_request` 기반 프록시 설정 (`app.conf`). 수정 후 컨테이너 재시작만으로 반영된다.
-- `Dockerfile` – React 정적 파일만 빌드하고 `serve`로 노출하는 컨테이너 정의(포트 `4173`).
+## 프로젝트 구조
 
-## 환경 변수
+- `frontend/`: Vite + React UI 소스 코드.
+  - `/api/v1/auth/*` 엔드포인트 테스트 (가입, 로그인)
+  - JWT 토큰 검증 패널
+  - 미디어 업로드 및 목록 조회 UI
+- `nginx/`: Nginx 설정 파일 (`app.conf`).
+  - `auth_request`를 이용한 인증 처리
+  - `/api/*` -> `auth-service` 프록시
+  - `/media` -> `media-service` 프록시
+- `docker-compose.yml`: 컨테이너 오케스트레이션 설정.
 
-- `AUTH_SERVER_ORIGIN` (기본값: `http://auth-service:8080`)
-  - Nginx가 프록시할 실제 인증 서버의 베이스 URL.
-  - Docker Compose 실행 시 `environment` 항목으로 손쉽게 교체할 수 있다.
-- `VITE_API_BASE_URL`
-  - React 앱에서 인증 API를 호출할 기준 주소. 기본값은 빈 값(`same-origin`).
-- `VITE_MEDIA_API_BASE_URL`
-  - 미디어 업로드 UI가 호출할 API prefix. 별도의 백엔드 서비스 URL을 지정해야 한다(예: `http://localhost:9000/media-api`).
-- `VITE_MEDIA_PROXY_TARGET` (개발 서버 전용)
-  - `npm run dev`에서 `/media-api`와 `/media-files` 요청을 전달할 대상. 로컬에서 직접 띄운 미디어 백엔드의 주소를 넣어준다.
+## 시작하기 (Docker)
 
-## 로컬 개발
+이 모듈은 `10_modules` 외부 네트워크를 사용합니다. 실행 전 해당 네트워크가 존재해야 합니다.
+
+```bash
+# 1. 네트워크 생성 (최초 1회)
+docker network create 10_modules
+
+# 2. 컨테이너 빌드 및 실행
+docker compose build
+docker compose up -d
+```
+
+### 서비스 구성
+
+| 서비스 명 | 컨테이너 명 | 호스트 포트 | 내부 포트 | 설명 |
+|---|---|---|---|---|
+| **web-static** | `auth-web-static` | 3000 | 4173 | React 정적 파일 서버 |
+| **web-gateway** | `auth-web-gateway` | 8080 | 80 | 메인 엔트리포인트 (Nginx) |
+
+실행 후 `http://localhost:8080`으로 접속하여 애플리케이션을 사용할 수 있습니다.
+
+> **Note**: `web-gateway`는 `auth-service` 및 `media-service` 컨테이너와 `10_modules` 네트워크를 통해 통신합니다. 백엔드 서비스들이 실행되어 있어야 정상적으로 동작합니다.
+
+## 로컬 개발 (Frontend)
+
+Docker 없이 로컬에서 React 앱을 개발하려면 `frontend` 디렉토리에서 다음을 수행합니다.
 
 ```bash
 cd frontend
@@ -28,51 +51,32 @@ npm install
 npm run dev
 ```
 
-React 개발 서버에서 API 호출을 테스트하려면 `.env.local`에 아래와 같이 설정한다.
+### 환경 변수 설정 (.env.local)
 
-```
-VITE_API_BASE_URL=http://localhost:8080        # 인증 서버 게이트웨이
-VITE_MEDIA_API_BASE_URL=http://localhost:9000  # 별도로 띄운 미디어 백엔드
-```
+로컬 개발 시 백엔드 API와의 통신을 위해 `.env.local` 파일을 생성하고 다음 변수를 설정할 수 있습니다.
 
-필요하다면 `VITE_MEDIA_PROXY_TARGET`을 설정하여 `/media-api`·`/media-files` 요청을 로컬 백엔드로 전달하도록 할 수 있다.
+```ini
+# 인증 서버 게이트웨이 주소 (기본값: same-origin)
+VITE_API_BASE_URL=http://localhost:8080
 
-## 컨테이너 빌드 & 실행
+# 미디어 파일/API 서버 주소
+VITE_MEDIA_API_BASE_URL=http://localhost:9000
 
-```bash
-# 루트 (docker-compose.yml 이 위치한 상위 디렉터리)에서
-# 최초 1회 공유 네트워크 생성 (이미 있으면 생략)
-docker network create auth-shared
-
-docker compose build web-static
-docker compose up web-gateway web-static
+# (선택) 로컬 개발 프록시 타겟 (npm run dev 사용 시)
+VITE_MEDIA_PROXY_TARGET=http://localhost:4000
 ```
 
-구성 요소:
+## Nginx 설정 (`nginx/app.conf`)
 
-- **web-static** – `auth-web-static` 컨테이너. 4173 포트에서 React 정적 파일을 제공합니다.
-- **web-gateway** – `auth-web-gateway` 컨테이너. `./0.Web/nginx/app.conf`를 그대로 로드하고, `/` 요청은 정적 서비스로, `/api/*` 요청은 인증 서버로 프록시합니다. 필요하면 이 게이트웨이에 별도의 미디어 백엔드 라우팅을 추가한다.
+Nginx는 다음과 같은 라우팅 규칙을 가집니다. 설정 수정 후에는 `docker compose restart web-gateway`로 적용할 수 있습니다.
 
-`web-gateway`는 `auth-shared` 네트워크를 통해 `1.Authentication`의 `auth-service` 컨테이너와 통신한다. 따라서 백엔드 스택을 실행하기 전에 해당 네트워크와 `auth-service`가 준비되어 있어야 한다. `nginx/app.conf`를 수정한 뒤 `docker compose restart web-gateway`만 실행하면 새 라우팅 규칙이 즉시 반영됩니다.
+- **`/`**: `auth-web-static` 컨테이너로 프록시 (UI 제공).
+- **`/internal/auth`**: 내부 인증용 (`auth-service:8080/auth/validate`).
+- **`/api/v1/auth/*`**: 로그인, 회원가입 등 공개 API (`auth-service`로 전달).
+- **`/api/*`**: 그 외 API는 `auth_request`로 토큰 검증 후 `auth-service`로 전달.
+- **`/media`**: 미디어 서비스 API (`media-service:4000`으로 전달, 인증 필요).
 
-## 미디어 처리 모듈 (Media)
+## 미디어 처리 (Media)
 
-- **프런트엔드 UI**
-  - React UI에 "Media Uploads" 섹션이 포함되어 파일 선택 → 업로드 → 미리보기 → 새로고침까지 한 패널에서 확인할 수 있다.
-- **백엔드 연동**
-  - 별도의 미디어 백엔드 서비스가 `VITE_MEDIA_API_BASE_URL`로 지정된 엔드포인트(`/media`, `/media/upload`, `/media-files/*` 등)를 제공해야 한다.
-
-## 커밋 메시지 템플릿
-
-루트에 있는 `.gitmessage` 파일을 사용하면 일관된 커밋 메시지를 작성할 수 있다.
-
-1. 최초 1회 아래 명령으로 Git에 템플릿을 등록한다.
-   ```bash
-   git config commit.template .gitmessage
-   ```
-2. `git commit`을 실행하면 편집기에 템플릿이 자동으로 채워진다.
-   - 첫 줄은 `type: Subject` 형식이다. `type`은 `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore` 중에서 선택한다.
-   - `Subject`는 명령형으로 50자 이하로 작성한다.
-   - 본문은 72자 이하로 줄바꿈하며 bullet 형태로 변경 사유를 적는다(생략 가능).
-   - `Refs`에는 이슈/티켓 번호를 적거나 필요 없으면 삭제해도 된다.
-   - `Testing`에는 실행한 명령이나 수동 검증을 적는다.
+- **UI**: "Media Uploads" 섹션에서 파일 업로드 및 미리보기 가능.
+- **Backend**: Nginx가 `/media` 경로로 들어오는 요청을 `media-service:4000`으로 프록시합니다.
