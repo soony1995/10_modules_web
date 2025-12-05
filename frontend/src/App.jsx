@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import './App.css'
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
@@ -47,8 +47,9 @@ function App() {
   const [selectedFile, setSelectedFile] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [fileInputKey, setFileInputKey] = useState(Date.now())
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
 
-  const appendLog = (title, payload) => {
+  const appendLog = useCallback((title, payload) => {
     setLogs((prev) => [
       {
         id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -58,7 +59,7 @@ function App() {
       },
       ...prev.slice(0, 6),
     ])
-  }
+  }, [])
 
   const sendRequest = async ({ path, options, label }) => {
     try {
@@ -103,6 +104,7 @@ function App() {
     if (response?.ok && body?.accessToken) {
       setAccessToken(body.accessToken)
       setTokenInput(body.accessToken)
+      setIsAuthenticated(true)
     }
   }
 
@@ -125,7 +127,11 @@ function App() {
     })
   }
 
-  const fetchMediaItems = async () => {
+  const fetchMediaItems = useCallback(async () => {
+    if (!isAuthenticated) {
+      return
+    }
+
     setMediaLoading(true)
     setMediaError('')
     try {
@@ -149,10 +155,14 @@ function App() {
     } finally {
       setMediaLoading(false)
     }
-  }
+  }, [appendLog, isAuthenticated])
 
   const handleMediaUpload = async (event) => {
     event.preventDefault()
+    if (!isAuthenticated) {
+      setMediaError('Login to upload media.')
+      return
+    }
     if (!selectedFile) {
       setMediaError('Please choose an image before uploading.')
       return
@@ -189,8 +199,11 @@ function App() {
   }
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      return
+    }
     fetchMediaItems()
-  }, [])
+  }, [isAuthenticated, fetchMediaItems])
 
   return (
     <main className="app">
@@ -288,60 +301,71 @@ function App() {
         </form>
       </section>
 
-      <section className="panel media-panel">
-        <div className="media-header">
-          <div>
-            <h2>Media Uploads</h2>
-            <p className="hint">
-              Files are stored by whichever media backend is configured via{' '}
-              <code>VITE_MEDIA_API_BASE_URL</code>.
-            </p>
+      {isAuthenticated ? (
+        <section className="panel media-panel">
+          <div className="media-header">
+            <div>
+              <h2>Media Uploads</h2>
+              <p className="hint">
+                Files are stored by whichever media backend is configured via{' '}
+                <code>VITE_MEDIA_API_BASE_URL</code>.
+              </p>
+            </div>
+            <div className="media-actions">
+              <button type="button" onClick={fetchMediaItems} disabled={mediaLoading}>
+                Refresh
+              </button>
+            </div>
           </div>
-          <div className="media-actions">
-            <button type="button" onClick={fetchMediaItems} disabled={mediaLoading}>
-              Refresh
+          <form className="media-form" onSubmit={handleMediaUpload}>
+            <label>
+              Select image
+              <input
+                key={fileInputKey}
+                type="file"
+                accept="image/*"
+                onChange={(event) => {
+                  setSelectedFile(event.target.files?.[0] || null)
+                }}
+              />
+            </label>
+            <button type="submit" disabled={!selectedFile || uploading}>
+              {uploading ? 'Uploading...' : 'Upload'}
             </button>
-          </div>
-        </div>
-        <form className="media-form" onSubmit={handleMediaUpload}>
-          <label>
-            Select image
-            <input
-              key={fileInputKey}
-              type="file"
-              accept="image/*"
-              onChange={(event) => {
-                setSelectedFile(event.target.files?.[0] || null)
-              }}
-            />
-          </label>
-          <button type="submit" disabled={!selectedFile || uploading}>
-            {uploading ? 'Uploading...' : 'Upload'}
-          </button>
-        </form>
-        {mediaError && <p className="media-error">{mediaError}</p>}
-        <div className="media-grid">
-          {mediaLoading && <p>Loading media...</p>}
-          {!mediaLoading && mediaItems.length === 0 && <p>No uploads yet.</p>}
-          {!mediaLoading &&
-            mediaItems.map((item) => (
-              <figure key={item.filename} className="media-card">
-                <div className="media-preview">
-                  <img src={item.url} alt={item.originalName || item.filename} />
-                </div>
-                <figcaption className="media-meta">
-                  <div>
-                    <strong>{item.originalName || item.filename}</strong>
-                    <p>{(item.size / 1024).toFixed(1)} KB · {new Date(item.uploadedAt).toLocaleString()}</p>
+          </form>
+          {mediaError && <p className="media-error">{mediaError}</p>}
+          <div className="media-grid">
+            {mediaLoading && <p>Loading media...</p>}
+            {!mediaLoading && mediaItems.length === 0 && <p>No uploads yet.</p>}
+            {!mediaLoading &&
+              mediaItems.map((item) => (
+                <figure key={item.filename} className="media-card">
+                  <div className="media-preview">
+                    <img src={item.url} alt={item.originalName || item.filename} />
                   </div>
-                  <a href={item.url} target="_blank" rel="noreferrer">
-                    Open
-                  </a>
-                </figcaption>
-              </figure>
-            ))}
-        </div>
-      </section>
+                  <figcaption className="media-meta">
+                    <div>
+                      <strong>{item.originalName || item.filename}</strong>
+                      <p>{(item.size / 1024).toFixed(1)} KB · {new Date(item.uploadedAt).toLocaleString()}</p>
+                    </div>
+                    <a href={item.url} target="_blank" rel="noreferrer">
+                      Open
+                    </a>
+                  </figcaption>
+                </figure>
+              ))}
+          </div>
+        </section>
+      ) : (
+        <section className="panel media-panel">
+          <div className="media-header">
+            <div>
+              <h2>Media Uploads</h2>
+              <p className="hint">Login is required to view and upload media.</p>
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="logs">
         <h2>Request Log</h2>
