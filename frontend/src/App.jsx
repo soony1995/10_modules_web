@@ -6,6 +6,7 @@ const MEDIA_API_BASE_URL = (import.meta.env.VITE_MEDIA_API_BASE_URL || '').repla
   /\/$/,
   '',
 )
+const SEARCH_API_BASE_URL = (import.meta.env.VITE_SEARCH_API_BASE_URL ?? '').replace(/\/$/, '')
 
 const initialSignup = {
   email: '',
@@ -20,6 +21,7 @@ const initialLogin = {
 
 const buildUrl = (path) => `${API_BASE_URL}${path}`
 const buildMediaUrl = (path) => `${MEDIA_API_BASE_URL}${path}`
+const buildSearchUrl = (path) => `${SEARCH_API_BASE_URL}${path}`
 
 const parseResponse = async (response) => {
   const rawText = await response.text()
@@ -48,6 +50,12 @@ function App() {
   const [uploading, setUploading] = useState(false)
   const [fileInputKey, setFileInputKey] = useState(Date.now())
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState({ person: '', year: '' })
+  const [searchResults, setSearchResults] = useState([])
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [searchError, setSearchError] = useState('')
 
   const appendLog = useCallback((title, payload) => {
     setLogs((prev) => [
@@ -136,6 +144,9 @@ function App() {
     setMediaError('')
     try {
       const response = await fetch(buildMediaUrl('/media'), {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
         credentials: 'include',
       })
       const body = await parseResponse(response)
@@ -176,6 +187,9 @@ function App() {
 
       const response = await fetch(buildMediaUrl('/media/upload'), {
         method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
         body: formData,
         credentials: 'include',
       })
@@ -195,6 +209,41 @@ function App() {
       setMediaError(error.message)
     } finally {
       setUploading(false)
+    }
+  }
+
+  const handleSearch = async (event) => {
+    event.preventDefault()
+    if (!isAuthenticated) return
+
+    setSearchLoading(true)
+    setSearchError('')
+    setSearchResults([]) // Clear previous results
+
+    try {
+      const params = new URLSearchParams()
+      if (searchQuery.person) params.append('person', searchQuery.person)
+      if (searchQuery.year) params.append('year', searchQuery.year)
+
+      const response = await fetch(buildSearchUrl(`/search/photos?${params.toString()}`), {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        }
+      })
+      const body = await parseResponse(response)
+      appendLog('Search', { status: response.status, ok: response.ok, body })
+
+      if (!response.ok) {
+        setSearchError(body?.message || 'Search failed')
+        return
+      }
+
+      setSearchResults(body.items || [])
+    } catch (error) {
+      appendLog('Search', { error: error.message })
+      setSearchError(error.message)
+    } finally {
+      setSearchLoading(false)
     }
   }
 
@@ -302,60 +351,116 @@ function App() {
       </section>
 
       {isAuthenticated ? (
-        <section className="panel media-panel">
-          <div className="media-header">
-            <div>
-              <h2>Media Uploads</h2>
-              <p className="hint">
-                Files are stored by whichever media backend is configured via{' '}
-                <code>VITE_MEDIA_API_BASE_URL</code>.
-              </p>
+        <>
+          <section className="panel media-panel search-panel">
+            <div className="media-header">
+              <div>
+                <h2>Photo Search</h2>
+                <p className="hint">Search by person name or year</p>
+              </div>
             </div>
-            <div className="media-actions">
-              <button type="button" onClick={fetchMediaItems} disabled={mediaLoading}>
-                Refresh
+            <form className="search-form" onSubmit={handleSearch}>
+              <div className="search-inputs">
+                <label>
+                  Person Name
+                  <input
+                    type="text"
+                    value={searchQuery.person}
+                    onChange={(e) => setSearchQuery(prev => ({ ...prev, person: e.target.value }))}
+                    placeholder="e.g. 홍길동"
+                  />
+                </label>
+                <label>
+                  Year
+                  <input
+                    type="number"
+                    value={searchQuery.year}
+                    onChange={(e) => setSearchQuery(prev => ({ ...prev, year: e.target.value }))}
+                    placeholder="e.g. 2024"
+                  />
+                </label>
+              </div>
+              <button type="submit" disabled={searchLoading}>
+                {searchLoading ? 'Searching...' : 'Search'}
               </button>
-            </div>
-          </div>
-          <form className="media-form" onSubmit={handleMediaUpload}>
-            <label>
-              Select image
-              <input
-                key={fileInputKey}
-                type="file"
-                accept="image/*"
-                onChange={(event) => {
-                  setSelectedFile(event.target.files?.[0] || null)
-                }}
-              />
-            </label>
-            <button type="submit" disabled={!selectedFile || uploading}>
-              {uploading ? 'Uploading...' : 'Upload'}
-            </button>
-          </form>
-          {mediaError && <p className="media-error">{mediaError}</p>}
-          <div className="media-grid">
-            {mediaLoading && <p>Loading media...</p>}
-            {!mediaLoading && mediaItems.length === 0 && <p>No uploads yet.</p>}
-            {!mediaLoading &&
-              mediaItems.map((item) => (
-                <figure key={item.filename} className="media-card">
+            </form>
+
+            {searchError && <p className="media-error">{searchError}</p>}
+
+            <div className="media-grid">
+              {!searchLoading && searchResults.length === 0 && searchQuery.person && <p>No results found.</p>}
+              {searchResults.map((item) => (
+                <figure key={item.mediaId} className="media-card">
                   <div className="media-preview">
-                    <img src={item.url} alt={item.originalName || item.filename} />
+                    {/* Note: URL construction might need adjustment based on how Search Service returns URLs */}
+                    <img src={`${MEDIA_API_BASE_URL}/media/${item.mediaId}`} alt="Search Result" />
                   </div>
                   <figcaption className="media-meta">
                     <div>
-                      <strong>{item.originalName || item.filename}</strong>
-                      <p>{(item.size / 1024).toFixed(1)} KB · {new Date(item.uploadedAt).toLocaleString()}</p>
+                      <strong>{new Date(item.takenAt || item.analyzedAt).toLocaleDateString()}</strong>
+                      <p>Found: {item.persons.map(p => p.name).join(', ') || 'Unknown person'}</p>
                     </div>
-                    <a href={item.url} target="_blank" rel="noreferrer">
-                      Open
-                    </a>
                   </figcaption>
                 </figure>
               ))}
-          </div>
-        </section>
+            </div>
+          </section>
+
+          <section className="panel media-panel">
+            <div className="media-header">
+              <div>
+                <h2>Media Uploads</h2>
+                <p className="hint">
+                  Files are stored by whichever media backend is configured via{' '}
+                  <code>VITE_MEDIA_API_BASE_URL</code>.
+                </p>
+              </div>
+              <div className="media-actions">
+                <button type="button" onClick={fetchMediaItems} disabled={mediaLoading}>
+                  Refresh
+                </button>
+              </div>
+            </div>
+            <form className="media-form" onSubmit={handleMediaUpload}>
+              <label>
+                Select image
+                <input
+                  key={fileInputKey}
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) => {
+                    setSelectedFile(event.target.files?.[0] || null)
+                  }}
+                />
+              </label>
+              <button type="submit" disabled={!selectedFile || uploading}>
+                {uploading ? 'Uploading...' : 'Upload'}
+              </button>
+            </form>
+            {mediaError && <p className="media-error">{mediaError}</p>}
+            <div className="media-grid">
+              {mediaLoading && <p>Loading media...</p>}
+              {!mediaLoading && mediaItems.length === 0 && <p>No uploads yet.</p>}
+              {!mediaLoading &&
+                mediaItems.map((item) => (
+                  <figure key={item.filename} className="media-card">
+                    <div className="media-preview">
+                      <img src={item.url} alt={item.originalName || item.filename} />
+                    </div>
+                    <figcaption className="media-meta">
+                      <div>
+                        <strong>{item.originalName || item.filename}</strong>
+                        <p>{(item.size / 1024).toFixed(1)} KB · {new Date(item.uploadedAt).toLocaleString()}</p>
+                      </div>
+                      <a href={item.url} target="_blank" rel="noreferrer">
+                        Open
+                      </a>
+                    </figcaption>
+                  </figure>
+                ))}
+            </div>
+          </section>
+        </>
       ) : (
         <section className="panel media-panel">
           <div className="media-header">
