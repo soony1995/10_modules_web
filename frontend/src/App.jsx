@@ -247,6 +247,12 @@ function App() {
     }
   }
 
+  const formatSizeKb = (sizeBytes) => {
+    const numeric = typeof sizeBytes === 'string' ? Number(sizeBytes) : sizeBytes
+    if (!Number.isFinite(numeric)) return '-'
+    return `${(numeric / 1024).toFixed(1)} KB`
+  }
+
   useEffect(() => {
     if (!isAuthenticated) {
       return
@@ -443,14 +449,14 @@ function App() {
               {!mediaLoading && mediaItems.length === 0 && <p>No uploads yet.</p>}
               {!mediaLoading &&
                 mediaItems.map((item) => (
-                  <figure key={item.filename} className="media-card">
+                  <figure key={item.id ?? item.storedKey ?? item.originalName} className="media-card">
                     <div className="media-preview">
-                      <img src={item.url} alt={item.originalName || item.filename} />
+                      <img src={item.url} alt={item.originalName || item.id || 'uploaded file'} />
                     </div>
                     <figcaption className="media-meta">
                       <div>
-                        <strong>{item.originalName || item.filename}</strong>
-                        <p>{(item.size / 1024).toFixed(1)} KB · {new Date(item.uploadedAt).toLocaleString()}</p>
+                        <strong>{item.originalName || item.id}</strong>
+                        <p>{formatSizeKb(item.sizeBytes)} · {new Date(item.uploadedAt).toLocaleString()}</p>
                       </div>
                       <a href={item.url} target="_blank" rel="noreferrer">
                         Open
