@@ -59,8 +59,12 @@ npm run dev
 # 인증 서버 게이트웨이 주소 (기본값: same-origin)
 VITE_API_BASE_URL=http://localhost:8080
 
-# 미디어 파일/API 서버 주소
-VITE_MEDIA_API_BASE_URL=http://localhost:9000
+# 미디어 API 서버 주소 (게이트웨이 권장: /media 프록시 + auth_request)
+VITE_MEDIA_API_BASE_URL=http://localhost:8080
+
+# (선택) 검색/라벨링 API 서버 주소 (기본값: same-origin)
+VITE_SEARCH_API_BASE_URL=http://localhost:8080
+VITE_AI_API_BASE_URL=http://localhost:8080
 
 # (선택) 로컬 개발 프록시 타겟 (npm run dev 사용 시)
 VITE_MEDIA_PROXY_TARGET=http://localhost:4000
