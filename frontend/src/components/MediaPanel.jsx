@@ -8,8 +8,10 @@ const MediaPanel = () => {
     selectedFile,
     uploading,
     fileInputKey,
+    deletingMedia,
     fetchMediaItems,
     handleMediaUpload,
+    handleDeleteMedia,
     handleFileChange,
     formatSizeKb,
   } = useMedia()
@@ -49,24 +51,39 @@ const MediaPanel = () => {
         {mediaLoading && <p>Loading media...</p>}
         {!mediaLoading && mediaItems.length === 0 && <p>No uploads yet.</p>}
         {!mediaLoading &&
-          mediaItems.map((item) => (
-            <figure key={item.id ?? item.storedKey ?? item.originalName} className="media-card">
-              <div className="media-preview">
-                <img src={item.url} alt={item.originalName || item.id || 'uploaded file'} />
-              </div>
-              <figcaption className="media-meta">
-                <div>
-                  <strong>{item.originalName || item.id}</strong>
-                  <p>
-                    {formatSizeKb(item.sizeBytes)} · {new Date(item.uploadedAt).toLocaleString()}
-                  </p>
+          mediaItems.map((item) => {
+            const isDeleting = Boolean(item.id && deletingMedia[item.id])
+
+            return (
+              <figure key={item.id ?? item.storedKey ?? item.originalName} className="media-card">
+                <div className="media-preview">
+                  <img src={item.url} alt={item.originalName || item.id || 'uploaded file'} />
                 </div>
-                <a href={item.url} target="_blank" rel="noreferrer">
-                  Open
-                </a>
-              </figcaption>
-            </figure>
-          ))}
+                <figcaption className="media-meta">
+                  <div>
+                    <strong>{item.originalName || item.id}</strong>
+                    <p>
+                      {formatSizeKb(item.sizeBytes)} ·{' '}
+                      {new Date(item.uploadedAt).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="media-meta-actions">
+                    <a href={item.url} target="_blank" rel="noreferrer">
+                      Open
+                    </a>
+                    <button
+                      type="button"
+                      className="media-delete"
+                      onClick={() => handleDeleteMedia(item.id)}
+                      disabled={!item.id || isDeleting}
+                    >
+                      {isDeleting ? 'Deleting...' : 'Delete'}
+                    </button>
+                  </div>
+                </figcaption>
+              </figure>
+            )
+          })}
       </div>
     </section>
   )

@@ -258,6 +258,25 @@ pre {
   font-size: 0.9rem;
 }
 
+.media-meta-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.media-delete {
+  background: #dc2626;
+}
+
+.media-delete:hover {
+  background: #b91c1c;
+}
+
+.media-delete:disabled {
+  background: #fca5a5;
+}
+
 .media-error {
   margin: 0;
   color: #b91c1c;
@@ -324,6 +343,7 @@ pre {
   border: 1px solid #e2e8f0;
   border-radius: 0.75rem;
   background: #f8fafc;
+  min-width: 0;
 }
 
 .face-preview {
@@ -349,21 +369,28 @@ pre {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  min-width: 0;
 }
 
 .face-actions {
   display: flex;
   gap: 0.5rem;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .face-actions select {
-  flex: 1;
+  flex: 1 1 140px;
+  min-width: 0;
   border: 1px solid #cbd5f5;
   border-radius: 0.5rem;
   padding: 0.55rem 0.75rem;
   background: white;
   font-family: inherit;
+}
+
+.face-meta .hint {
+  overflow-wrap: anywhere;
 }
 
 .face-actions button {

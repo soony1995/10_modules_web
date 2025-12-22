@@ -10,6 +10,7 @@ export const MediaProvider = ({ children, isAuthenticated }) => {
   const [selectedFile, setSelectedFile] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [fileInputKey, setFileInputKey] = useState(Date.now())
+  const [deletingMedia, setDeletingMedia] = useState({})
 
   const fetchMediaItems = useCallback(async () => {
     if (!isAuthenticated) {
@@ -87,6 +88,44 @@ export const MediaProvider = ({ children, isAuthenticated }) => {
     [fetchMediaItems, isAuthenticated, selectedFile],
   )
 
+  const handleDeleteMedia = useCallback(
+    async (mediaId) => {
+      if (!mediaId) {
+        return
+      }
+      if (!isAuthenticated) {
+        setMediaError('Login to delete media.')
+        return
+      }
+
+      setDeletingMedia((prev) => ({ ...prev, [mediaId]: true }))
+      setMediaError('')
+      try {
+        const { response, body } = await requestMedia({
+          path: `/media/${mediaId}`,
+          label: 'Media Delete',
+          auth: true,
+          options: {
+            method: 'DELETE',
+            credentials: 'include',
+          },
+        })
+
+        if (!response?.ok) {
+          setMediaError(body?.message || 'Delete failed')
+          return
+        }
+
+        setMediaItems((prev) => prev.filter((item) => item.id !== mediaId))
+      } catch (error) {
+        setMediaError(error.message)
+      } finally {
+        setDeletingMedia((prev) => ({ ...prev, [mediaId]: false }))
+      }
+    },
+    [isAuthenticated],
+  )
+
   const handleFileChange = useCallback((event) => {
     setSelectedFile(event.target.files?.[0] || null)
   }, [])
@@ -112,8 +151,10 @@ export const MediaProvider = ({ children, isAuthenticated }) => {
       selectedFile,
       uploading,
       fileInputKey,
+      deletingMedia,
       fetchMediaItems,
       handleMediaUpload,
+      handleDeleteMedia,
       handleFileChange,
       formatSizeKb,
     }),
@@ -124,8 +165,10 @@ export const MediaProvider = ({ children, isAuthenticated }) => {
       selectedFile,
       uploading,
       fileInputKey,
+      deletingMedia,
       fetchMediaItems,
       handleMediaUpload,
+      handleDeleteMedia,
       handleFileChange,
       formatSizeKb,
     ],
