@@ -1,15 +1,25 @@
 import './App.css'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import AppHeader from './components/AppHeader.jsx'
-import AuthPanels from './components/AuthPanels.jsx'
-import SearchPanel from './components/SearchPanel.jsx'
-import MediaPanel from './components/MediaPanel.jsx'
-import LabelPanel from './components/LabelPanel.jsx'
+import AppNav from './components/AppNav.jsx'
 import RequestLog from './components/RequestLog.jsx'
+import AuthPage from './pages/AuthPage.jsx'
+import MediaPage from './pages/MediaPage.jsx'
+import SearchPage from './pages/SearchPage.jsx'
+import LabelingPage from './pages/LabelingPage.jsx'
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx'
 import { LabelingProvider } from './contexts/LabelingContext.jsx'
 import { MediaProvider } from './contexts/MediaContext.jsx'
 import { RequestLogProvider } from './contexts/RequestLogContext.jsx'
 import { SearchProvider } from './contexts/SearchContext.jsx'
+
+const RequireAuth = ({ children }) => {
+  const { isAuthenticated } = useAuth()
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />
+  }
+  return children
+}
 
 const AppContent = () => {
   const { isAuthenticated } = useAuth()
@@ -17,25 +27,43 @@ const AppContent = () => {
   return (
     <main className="app">
       <AppHeader />
-      <AuthPanels />
+      <AppNav />
+      <Routes>
+        <Route
+          path="/"
+          element={
+            isAuthenticated ? <Navigate to="/media" replace /> : <Navigate to="/auth" replace />
+          }
+        />
+        <Route path="/auth" element={<AuthPage />} />
+        <Route
+          path="/media"
+          element={
+            <RequireAuth>
+              <MediaPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/search"
+          element={
+            <RequireAuth>
+              <SearchPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/labeling"
+          element={
+            <RequireAuth>
+              <LabelingPage />
+            </RequireAuth>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
 
-      {isAuthenticated ? (
-        <>
-          <SearchPanel />
-          <MediaPanel />
-          <LabelPanel />
-        </>
-      ) : (
-        <section className="panel media-panel">
-          <div className="media-header">
-            <div>
-              <h2>Media Uploads</h2>
-              <p className="hint">Login is required to view and upload media.</p>
-            </div>
-          </div>
-        </section>
-      )}
-
+      {/* TODO: remove request log panel before production release */}
       <RequestLog />
     </main>
   )

@@ -29,6 +29,27 @@ body {
   align-items: center;
 }
 
+.app-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.app-nav-link {
+  text-decoration: none;
+  color: #1e3a8a;
+  background: #e0f2fe;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  font-weight: 600;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.app-nav-link.active {
+  background: #1d4ed8;
+  color: #ffffff;
+}
+
 .tag {
   display: inline-block;
   background: #e0e7ff;
