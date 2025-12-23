@@ -154,6 +154,11 @@ input {
   color: #1e3a8a;
 }
 
+.search-suggestion:focus {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+}
+
 button {
   border: none;
   border-radius: 999px;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSearch } from '../contexts/SearchContext.jsx'
 
 const SearchPanel = () => {
@@ -15,27 +15,71 @@ const SearchPanel = () => {
     handleSearch,
   } = useSearch()
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1)
+  const inputRef = useRef(null)
+  const suggestionRefs = useRef([])
 
   useEffect(() => {
     setActiveSuggestionIndex(-1)
+    suggestionRefs.current = []
   }, [searchSuggestions])
+
+  const focusSuggestion = (index) => {
+    requestAnimationFrame(() => {
+      suggestionRefs.current[index]?.focus()
+    })
+  }
+
+  const moveSuggestion = (nextIndex) => {
+    setActiveSuggestionIndex(nextIndex)
+    focusSuggestion(nextIndex)
+  }
+
+  const handleSuggestionPick = (value) => {
+    handleSearchSuggestionSelect(value)
+    requestAnimationFrame(() => {
+      inputRef.current?.focus()
+    })
+  }
 
   const handlePersonKeyDown = (event) => {
     if (searchSuggestions.length === 0) return
 
-    if (event.key === 'ArrowDown') {
+    if (event.key === 'ArrowDown' || event.keyCode === 40) {
       event.preventDefault()
-      setActiveSuggestionIndex((prev) =>
-        prev >= searchSuggestions.length - 1 ? 0 : prev + 1,
-      )
-    } else if (event.key === 'ArrowUp') {
+      const nextIndex =
+        activeSuggestionIndex >= searchSuggestions.length - 1 ? 0 : activeSuggestionIndex + 1
+      moveSuggestion(nextIndex)
+    } else if (event.key === 'ArrowUp' || event.keyCode === 38) {
       event.preventDefault()
-      setActiveSuggestionIndex((prev) =>
-        prev <= 0 ? searchSuggestions.length - 1 : prev - 1,
-      )
+      const nextIndex =
+        activeSuggestionIndex <= 0 ? searchSuggestions.length - 1 : activeSuggestionIndex - 1
+      moveSuggestion(nextIndex)
     } else if (event.key === 'Enter' && activeSuggestionIndex >= 0) {
       event.preventDefault()
-      handleSearchSuggestionSelect(searchSuggestions[activeSuggestionIndex])
+      handleSuggestionPick(searchSuggestions[activeSuggestionIndex])
+    } else if (event.key === 'Escape') {
+      setActiveSuggestionIndex(-1)
+    }
+  }
+
+  const handleSuggestionKeyDown = (event, index) => {
+    if (event.key === 'ArrowDown' || event.keyCode === 40) {
+      event.preventDefault()
+      const nextIndex = index >= searchSuggestions.length - 1 ? 0 : index + 1
+      moveSuggestion(nextIndex)
+    } else if (event.key === 'ArrowUp' || event.keyCode === 38) {
+      event.preventDefault()
+      const nextIndex = index <= 0 ? searchSuggestions.length - 1 : index - 1
+      moveSuggestion(nextIndex)
+    } else if (event.key === 'Enter') {
+      event.preventDefault()
+      handleSuggestionPick(searchSuggestions[index])
+    } else if (event.key === 'Escape') {
+      event.preventDefault()
+      setActiveSuggestionIndex(-1)
+      requestAnimationFrame(() => {
+        inputRef.current?.focus()
+      })
     }
   }
 
@@ -53,6 +97,7 @@ const SearchPanel = () => {
             Person Name
             <input
               type="text"
+              ref={inputRef}
               value={searchQuery.person}
               onChange={(event) => handleSearchQueryChange('person', event.target.value)}
               onKeyDown={handlePersonKeyDown}
@@ -75,9 +120,13 @@ const SearchPanel = () => {
                       <button
                         type="button"
                         id={`search-suggestion-${index}`}
+                        ref={(node) => {
+                          suggestionRefs.current[index] = node
+                        }}
                         className={`search-suggestion${isActive ? ' active' : ''}`}
                         aria-selected={isActive}
-                        onClick={() => handleSearchSuggestionSelect(suggestion)}
+                        onClick={() => handleSuggestionPick(suggestion)}
+                        onKeyDown={(event) => handleSuggestionKeyDown(event, index)}
                       >
                         {suggestion}
                       </button>
