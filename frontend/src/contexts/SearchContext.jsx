@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { requestMedia, requestSearch } from '../utils/api.js'
 
 const SearchContext = createContext(null)
@@ -14,10 +14,73 @@ export const SearchProvider = ({ children, isAuthenticated }) => {
   const [searchLoading, setSearchLoading] = useState(false)
   const [searchError, setSearchError] = useState('')
   const [searchMediaById, setSearchMediaById] = useState({})
+  const [searchSuggestions, setSearchSuggestions] = useState([])
+  const [searchSuggestionsLoading, setSearchSuggestionsLoading] = useState(false)
+  const suppressSuggestionsRef = useRef(false)
+  const suggestionRequestId = useRef(0)
 
   const handleSearchQueryChange = useCallback((field, value) => {
     setSearchQuery((prev) => ({ ...prev, [field]: value }))
   }, [])
+
+  const handleSearchSuggestionSelect = useCallback((value) => {
+    suppressSuggestionsRef.current = true
+    setSearchQuery((prev) => ({ ...prev, person: value }))
+    setSearchSuggestions([])
+    setSearchSuggestionsLoading(false)
+  }, [])
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setSearchSuggestions([])
+      setSearchSuggestionsLoading(false)
+      return
+    }
+
+    if (suppressSuggestionsRef.current) {
+      suppressSuggestionsRef.current = false
+      return
+    }
+
+    const term = searchQuery.person.trim()
+    if (!term) {
+      setSearchSuggestions([])
+      setSearchSuggestionsLoading(false)
+      return
+    }
+
+    const requestId = ++suggestionRequestId.current
+    setSearchSuggestionsLoading(true)
+
+    const timer = setTimeout(async () => {
+      try {
+        const { response, body } = await requestSearch({
+          path: `/search/photos/suggestions?q=${encodeURIComponent(term)}`,
+          label: 'Search suggestions',
+          auth: true,
+        })
+
+        if (suggestionRequestId.current !== requestId) return
+
+        if (!response?.ok) {
+          setSearchSuggestions([])
+          return
+        }
+
+        setSearchSuggestions(Array.isArray(body) ? body : [])
+      } catch {
+        if (suggestionRequestId.current === requestId) {
+          setSearchSuggestions([])
+        }
+      } finally {
+        if (suggestionRequestId.current === requestId) {
+          setSearchSuggestionsLoading(false)
+        }
+      }
+    }, 200)
+
+    return () => clearTimeout(timer)
+  }, [isAuthenticated, searchQuery.person])
 
   const handleSearch = useCallback(
     async (event) => {
@@ -28,6 +91,8 @@ export const SearchProvider = ({ children, isAuthenticated }) => {
       setSearchError('')
       setSearchResults([])
       setSearchMediaById({})
+      setSearchSuggestions([])
+      setSearchSuggestionsLoading(false)
 
       try {
         const params = new URLSearchParams()
@@ -95,7 +160,10 @@ export const SearchProvider = ({ children, isAuthenticated }) => {
       searchLoading,
       searchError,
       searchMediaById,
+      searchSuggestions,
+      searchSuggestionsLoading,
       handleSearchQueryChange,
+      handleSearchSuggestionSelect,
       handleSearch,
     }),
     [
@@ -104,7 +172,10 @@ export const SearchProvider = ({ children, isAuthenticated }) => {
       searchLoading,
       searchError,
       searchMediaById,
+      searchSuggestions,
+      searchSuggestionsLoading,
       handleSearchQueryChange,
+      handleSearchSuggestionSelect,
       handleSearch,
     ],
   )

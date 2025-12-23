@@ -114,6 +114,46 @@ input {
   font-family: inherit;
 }
 
+.search-suggestions {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.search-suggestions li + li {
+  border-top: 1px solid #e2e8f0;
+}
+
+.search-suggestion {
+  width: 100%;
+  text-align: left;
+  border: none;
+  border-radius: 0;
+  padding: 0.5rem 0.75rem;
+  background: #f8fafc;
+  color: #0f172a;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.search-suggestion:hover {
+  background: #e0f2fe;
+  color: #1d4ed8;
+}
+
+.search-suggestion.active {
+  background: #bfdbfe;
+  color: #1e3a8a;
+}
+
 button {
   border: none;
   border-radius: 999px;
