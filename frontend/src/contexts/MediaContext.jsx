@@ -7,7 +7,7 @@ export const MediaProvider = ({ children, isAuthenticated }) => {
   const [mediaItems, setMediaItems] = useState([])
   const [mediaLoading, setMediaLoading] = useState(false)
   const [mediaError, setMediaError] = useState('')
-  const [selectedFile, setSelectedFile] = useState(null)
+  const [selectedFiles, setSelectedFiles] = useState([])
   const [uploading, setUploading] = useState(false)
   const [fileInputKey, setFileInputKey] = useState(Date.now())
   const [deletingMedia, setDeletingMedia] = useState({})
@@ -49,7 +49,7 @@ export const MediaProvider = ({ children, isAuthenticated }) => {
         setMediaError('Login to upload media.')
         return
       }
-      if (!selectedFile) {
+      if (selectedFiles.length === 0) {
         setMediaError('Please choose an image before uploading.')
         return
       }
@@ -58,7 +58,9 @@ export const MediaProvider = ({ children, isAuthenticated }) => {
       setMediaError('')
       try {
         const formData = new FormData()
-        formData.append('file', selectedFile)
+        selectedFiles.forEach((file) => {
+          formData.append('files', file)
+        })
 
         const { response, body } = await requestMedia({
           path: '/media/upload',
@@ -76,16 +78,19 @@ export const MediaProvider = ({ children, isAuthenticated }) => {
           return
         }
 
-        setSelectedFile(null)
+        setSelectedFiles([])
         setFileInputKey(Date.now())
         await fetchMediaItems()
+        if (body?.failed?.length) {
+          setMediaError(`Failed: ${body.failed.map((item) => item.fileName).join(', ')}`)
+        }
       } catch (error) {
         setMediaError(error.message)
       } finally {
         setUploading(false)
       }
     },
-    [fetchMediaItems, isAuthenticated, selectedFile],
+    [fetchMediaItems, isAuthenticated, selectedFiles],
   )
 
   const handleDeleteMedia = useCallback(
@@ -127,7 +132,7 @@ export const MediaProvider = ({ children, isAuthenticated }) => {
   )
 
   const handleFileChange = useCallback((event) => {
-    setSelectedFile(event.target.files?.[0] || null)
+    setSelectedFiles(event.target.files ? Array.from(event.target.files) : [])
   }, [])
 
   const formatSizeKb = useCallback((sizeBytes) => {
@@ -148,7 +153,7 @@ export const MediaProvider = ({ children, isAuthenticated }) => {
       mediaItems,
       mediaLoading,
       mediaError,
-      selectedFile,
+      selectedFiles,
       uploading,
       fileInputKey,
       deletingMedia,
@@ -162,7 +167,7 @@ export const MediaProvider = ({ children, isAuthenticated }) => {
       mediaItems,
       mediaLoading,
       mediaError,
-      selectedFile,
+      selectedFiles,
       uploading,
       fileInputKey,
       deletingMedia,

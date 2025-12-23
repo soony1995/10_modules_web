@@ -5,7 +5,7 @@ const MediaPanel = () => {
     mediaItems,
     mediaLoading,
     mediaError,
-    selectedFile,
+    selectedFiles,
     uploading,
     fileInputKey,
     deletingMedia,
@@ -34,15 +34,16 @@ const MediaPanel = () => {
       </div>
       <form className="media-form" onSubmit={handleMediaUpload}>
         <label>
-          Select image
+          Select images
           <input
             key={fileInputKey}
             type="file"
             accept="image/*"
+            multiple
             onChange={handleFileChange}
           />
         </label>
-        <button type="submit" disabled={!selectedFile || uploading}>
+        <button type="submit" disabled={selectedFiles.length === 0 || uploading}>
           {uploading ? 'Uploading...' : 'Upload'}
         </button>
       </form>
