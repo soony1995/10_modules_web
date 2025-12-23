@@ -68,6 +68,16 @@ export const LabelingProvider = ({ children, isAuthenticated }) => {
 
       const faces = Array.isArray(body) ? body : []
       setUnassignedFaces(faces)
+      setFaceAssignments((prev) => {
+        const next = { ...prev }
+        faces.forEach((face) => {
+          if (!face?.id) return
+          if (!next[face.id] && face.suggested_person_id) {
+            next[face.id] = face.suggested_person_id
+          }
+        })
+        return next
+      })
 
       const mediaIds = Array.from(
         new Set(faces.map((face) => face.media_id).filter(Boolean)),
