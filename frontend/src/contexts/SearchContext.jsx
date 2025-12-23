@@ -14,6 +14,9 @@ export const SearchProvider = ({ children, isAuthenticated }) => {
   const [searchLoading, setSearchLoading] = useState(false)
   const [searchError, setSearchError] = useState('')
   const [searchMediaById, setSearchMediaById] = useState({})
+  const [searchTotal, setSearchTotal] = useState(0)
+  const [searchPage, setSearchPage] = useState(0)
+  const [searchSize, setSearchSize] = useState(20)
   const [searchSuggestions, setSearchSuggestions] = useState([])
   const [searchSuggestionsLoading, setSearchSuggestionsLoading] = useState(false)
   const suppressSuggestionsRef = useRef(false)
@@ -21,6 +24,7 @@ export const SearchProvider = ({ children, isAuthenticated }) => {
 
   const handleSearchQueryChange = useCallback((field, value) => {
     setSearchQuery((prev) => ({ ...prev, [field]: value }))
+    setSearchPage(0)
   }, [])
 
   const handleSearchSuggestionSelect = useCallback((value) => {
@@ -82,22 +86,26 @@ export const SearchProvider = ({ children, isAuthenticated }) => {
     return () => clearTimeout(timer)
   }, [isAuthenticated, searchQuery.person])
 
-  const handleSearch = useCallback(
-    async (event) => {
-      event.preventDefault()
+  const runSearch = useCallback(
+    async ({ page = 0, size = searchSize } = {}) => {
       if (!isAuthenticated) return
 
       setSearchLoading(true)
       setSearchError('')
       setSearchResults([])
       setSearchMediaById({})
+      setSearchTotal(0)
       setSearchSuggestions([])
       setSearchSuggestionsLoading(false)
+      setSearchPage(page)
+      setSearchSize(size)
 
       try {
         const params = new URLSearchParams()
         if (searchQuery.person) params.append('person', searchQuery.person)
         if (searchQuery.year) params.append('year', searchQuery.year)
+        params.append('page', String(page))
+        params.append('size', String(size))
 
         const { response, body } = await requestSearch({
           path: `/search/photos?${params.toString()}`,
@@ -117,6 +125,9 @@ export const SearchProvider = ({ children, isAuthenticated }) => {
         })
 
         setSearchResults(items)
+        setSearchTotal(typeof body?.total === 'number' ? body.total : items.length)
+        setSearchPage(typeof body?.page === 'number' ? body.page : page)
+        setSearchSize(typeof body?.size === 'number' ? body.size : size)
 
         const mediaIds = Array.from(
           new Set(items.map((item) => item?.mediaId ?? item?.media_id).filter(Boolean)),
@@ -150,7 +161,22 @@ export const SearchProvider = ({ children, isAuthenticated }) => {
         setSearchLoading(false)
       }
     },
-    [isAuthenticated, searchQuery],
+    [isAuthenticated, searchQuery, searchSize],
+  )
+
+  const handleSearch = useCallback(
+    (event) => {
+      event.preventDefault()
+      runSearch({ page: 0 })
+    },
+    [runSearch],
+  )
+
+  const handleSearchPageChange = useCallback(
+    (nextPage) => {
+      runSearch({ page: nextPage })
+    },
+    [runSearch],
   )
 
   const value = useMemo(
@@ -160,11 +186,15 @@ export const SearchProvider = ({ children, isAuthenticated }) => {
       searchLoading,
       searchError,
       searchMediaById,
+      searchTotal,
+      searchPage,
+      searchSize,
       searchSuggestions,
       searchSuggestionsLoading,
       handleSearchQueryChange,
       handleSearchSuggestionSelect,
       handleSearch,
+      handleSearchPageChange,
     }),
     [
       searchQuery,
@@ -172,11 +202,15 @@ export const SearchProvider = ({ children, isAuthenticated }) => {
       searchLoading,
       searchError,
       searchMediaById,
+      searchTotal,
+      searchPage,
+      searchSize,
       searchSuggestions,
       searchSuggestionsLoading,
       handleSearchQueryChange,
       handleSearchSuggestionSelect,
       handleSearch,
+      handleSearchPageChange,
     ],
   )
 

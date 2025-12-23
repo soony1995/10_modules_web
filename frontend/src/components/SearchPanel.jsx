@@ -8,15 +8,22 @@ const SearchPanel = () => {
     searchError,
     searchResults,
     searchMediaById,
+    searchTotal,
+    searchPage,
+    searchSize,
     searchSuggestions,
     searchSuggestionsLoading,
     handleSearchQueryChange,
     handleSearchSuggestionSelect,
     handleSearch,
+    handleSearchPageChange,
   } = useSearch()
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1)
   const inputRef = useRef(null)
   const suggestionRefs = useRef([])
+  const totalPages = searchTotal > 0 ? Math.ceil(searchTotal / searchSize) : 0
+  const canGoPrev = searchPage > 0
+  const canGoNext = totalPages > 0 && searchPage < totalPages - 1
 
   useEffect(() => {
     setActiveSuggestionIndex(-1)
@@ -153,6 +160,14 @@ const SearchPanel = () => {
 
       {searchError && <p className="media-error">{searchError}</p>}
 
+      {searchTotal > 0 && (
+        <div className="search-summary">
+          <span className="hint">
+            {searchTotal} results · Page {searchPage + 1} of {totalPages || 1}
+          </span>
+        </div>
+      )}
+
       <div className="media-grid">
         {!searchLoading && searchResults.length === 0 && searchQuery.person && (
           <p>No results found.</p>
@@ -193,6 +208,25 @@ const SearchPanel = () => {
           )
         })}
       </div>
+
+      {totalPages > 1 && (
+        <div className="search-pagination">
+          <button
+            type="button"
+            onClick={() => handleSearchPageChange(searchPage - 1)}
+            disabled={!canGoPrev || searchLoading}
+          >
+            Previous
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSearchPageChange(searchPage + 1)}
+            disabled={!canGoNext || searchLoading}
+          >
+            Next
+          </button>
+        </div>
+      )}
     </section>
   )
 }

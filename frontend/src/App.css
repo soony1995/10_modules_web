@@ -328,6 +328,17 @@ pre {
   font-size: 0.9rem;
 }
 
+.search-summary {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.search-pagination {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
 .label-form {
   display: flex;
   flex-wrap: wrap;
